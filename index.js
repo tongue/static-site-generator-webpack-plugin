@@ -1,9 +1,9 @@
-var RawSource = require('webpack-sources/lib/RawSource');
-var evaluate = require('eval');
-var path = require('path');
-var cheerio = require('cheerio');
-var url = require('url');
-var Promise = require('bluebird');
+var RawSource = require("webpack-sources/lib/RawSource");
+var evaluate = require("eval");
+var path = require("path");
+var cheerio = require("cheerio");
+var url = require("url");
+var Promise = require("bluebird");
 
 function StaticSiteGeneratorWebpackPlugin(options) {
   if (arguments.length > 1) {
@@ -13,7 +13,9 @@ function StaticSiteGeneratorWebpackPlugin(options) {
   options = options || {};
 
   this.entry = options.entry;
-  this.paths = Array.isArray(options.paths) ? options.paths : [options.paths || '/'];
+  this.paths = Array.isArray(options.paths)
+    ? options.paths
+    : [options.paths || "/"];
   this.locals = options.locals;
   this.globals = options.globals;
   this.crawl = Boolean(options.crawl);
@@ -22,8 +24,8 @@ function StaticSiteGeneratorWebpackPlugin(options) {
 StaticSiteGeneratorWebpackPlugin.prototype.apply = function(compiler) {
   var self = this;
 
-  compiler.plugin('this-compilation', function(compilation) {
-    compilation.plugin('optimize-assets', function(_, done) {
+  compiler.plugin("this-compilation", function(compilation) {
+    compilation.plugin("optimize-assets", function(_, done) {
       var renderPromises;
 
       var webpackStats = compilation.getStats();
@@ -39,18 +41,34 @@ StaticSiteGeneratorWebpackPlugin.prototype.apply = function(compiler) {
         var assets = getAssetsFromCompilation(compilation, webpackStatsJson);
 
         var source = asset.source();
-        var render = evaluate(source, /* filename: */ self.entry, /* scope: */ self.globals, /* includeGlobals: */ true);
+        var render = evaluate(
+          source,
+          /* filename: */ self.entry,
+          /* scope: */ self.globals,
+          /* includeGlobals: */ true
+        );
 
-        if (render.hasOwnProperty('default')) {
-          render = render['default'];
+        if (render.hasOwnProperty("default")) {
+          render = render["default"];
         }
 
-        if (typeof render !== 'function') {
-          throw new Error('Export from "' + self.entry + '" must be a function that returns an HTML string. Is output.libraryTarget in the configuration set to "umd"?');
+        if (typeof render !== "function") {
+          throw new Error(
+            'Export from "' +
+              self.entry +
+              '" must be a function that returns an HTML string. Is output.libraryTarget in the configuration set to "umd"?'
+          );
         }
 
-        renderPaths(self.crawl, self.locals, self.paths, render, assets, webpackStats, compilation)
-          .nodeify(done);
+        renderPaths(
+          self.crawl,
+          self.locals,
+          self.paths,
+          render,
+          assets,
+          webpackStats,
+          compilation
+        ).nodeify(done);
       } catch (err) {
         compilation.errors.push(err.stack);
         done();
@@ -59,7 +77,15 @@ StaticSiteGeneratorWebpackPlugin.prototype.apply = function(compiler) {
   });
 };
 
-function renderPaths(crawl, userLocals, paths, render, assets, webpackStats, compilation) {
+function renderPaths(
+  crawl,
+  userLocals,
+  paths,
+  render,
+  assets,
+  webpackStats,
+  compilation
+) {
   var renderPromises = paths.map(function(outputPath) {
     var locals = {
       path: outputPath,
@@ -73,15 +99,19 @@ function renderPaths(crawl, userLocals, paths, render, assets, webpackStats, com
       }
     }
 
-    var renderPromise = render.length < 2 ?
-      Promise.resolve(render(locals)) :
-      Promise.fromNode(render.bind(null, locals));
+    var renderPromise =
+      render.length < 2
+        ? Promise.resolve(render(locals))
+        : Promise.fromNode(render.bind(null, locals));
 
     return renderPromise
       .then(function(output) {
-        var outputByPath = typeof output === 'object' ? output : makeObject(outputPath, output);
+        var outputByPath =
+          typeof output === "object" ? output : makeObject(outputPath, output);
 
-        var assetGenerationPromises = Object.keys(outputByPath).map(function(key) {
+        var assetGenerationPromises = Object.keys(outputByPath).map(function(
+          key
+        ) {
           var rawSource = outputByPath[key];
           var assetName = pathToAssetName(key);
 
@@ -97,7 +127,15 @@ function renderPaths(crawl, userLocals, paths, render, assets, webpackStats, com
               path: key
             });
 
-            return renderPaths(crawl, userLocals, relativePaths, render, assets, webpackStats, compilation);
+            return renderPaths(
+              crawl,
+              userLocals,
+              relativePaths,
+              render,
+              assets,
+              webpackStats,
+              compilation
+            );
           }
         });
 
@@ -159,10 +197,14 @@ var getAssetsFromCompilation = function(compilation, webpackStatsJson) {
 };
 
 function pathToAssetName(outputPath) {
-  var outputFileName = outputPath.replace(/^(\/|\\)/, ''); // Remove leading slashes for webpack-dev-server
+  var outputFileName = outputPath.replace(/^(\/|\\)/, ""); // Remove leading slashes for webpack-dev-server
 
   if (!/\.(html?)$/i.test(outputFileName)) {
-    outputFileName = path.join(outputFileName, 'index.html');
+    outputFileName = path.join(outputFileName, "index.html");
+  }
+
+  if (/(\/css\/)/i.test(outputFileName)) {
+    outputFileName = path.join(outputFileName, "styles.css");
   }
 
   return outputFileName;
@@ -180,15 +222,15 @@ function relativePathsFromHtml(options) {
 
   var $ = cheerio.load(html);
 
-  var linkHrefs = $('a[href]')
+  var linkHrefs = $("a[href]")
     .map(function(i, el) {
-      return $(el).attr('href');
+      return $(el).attr("href");
     })
     .get();
 
-  var iframeSrcs = $('iframe[src]')
+  var iframeSrcs = $("iframe[src]")
     .map(function(i, el) {
-      return $(el).attr('src');
+      return $(el).attr("src");
     })
     .get();
 
@@ -196,19 +238,19 @@ function relativePathsFromHtml(options) {
     .concat(linkHrefs)
     .concat(iframeSrcs)
     .map(function(href) {
-      if (href.indexOf('//') === 0) {
-        return null
+      if (href.indexOf("//") === 0) {
+        return null;
       }
 
       var parsed = url.parse(href);
 
-      if (parsed.protocol || typeof parsed.path !== 'string') {
+      if (parsed.protocol || typeof parsed.path !== "string") {
         return null;
       }
 
-      return parsed.path.indexOf('/') === 0 ?
-        parsed.path :
-        url.resolve(currentPath, parsed.path);
+      return parsed.path.indexOf("/") === 0
+        ? parsed.path
+        : url.resolve(currentPath, parsed.path);
     })
     .filter(function(href) {
       return href != null;
